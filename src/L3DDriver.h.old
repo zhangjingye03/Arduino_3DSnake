@@ -1,0 +1,125 @@
+#include <Arduino.h>
+
+#define LATCH_PIN 3
+#define CLOCK_PIN 4
+#define DATAS_PIN 2
+
+struct coord {
+    unsigned char x, y, z;
+};
+
+class L3DDriver {
+    public:
+        L3DDriver() : negativePin(5), positiveValue({0, 0, 0, 0, 0, 0, 0, 0}) {
+            for (unsigned char i = 2; i < 13; i++) {
+                pinMode(i, OUTPUT);
+                digitalWrite(i, LOW);
+            }
+        }
+
+        /*
+         * x为负极一侧，以电路板右上角往左上角为正方向，以0为首
+         * y为正极一侧，以电路板右下角往右上角为正方向，以0为首
+         * z为层数，以电路板最底层为第0层
+         */
+
+        void lightOn(coord c) {
+            lightCtrl(1, c);
+        }
+
+        void lightOff(coord c) {
+            lightCtrl(0, c);
+        }
+
+        void lightCtrl(unsigned char action, coord c) {
+            unsigned char ox = c.x, oy = c.y, oz = c.z;
+            /*Serial.print("Orig coord: ");
+            Serial.print(" x = "); 
+            Serial.print(ox);
+            Serial.print(", y = ");
+            Serial.print(oy);
+            Serial.print(", z = ");
+            Serial.println(oz);*/
+            c = calcPos(c);
+            unsigned char x = c.x, y = c.y, z = c.z;
+            /*Serial.print("Adjd coord: ");
+            Serial.print(" x = "); 
+            Serial.print(x);
+            Serial.print(", y = ");
+            Serial.print(y);
+            Serial.print(", z = ");
+            Serial.println(z);*/
+            if (x > 7 || y > 7 || z > 3 || x < 0 || y < 0 || z < 0) return;
+
+            
+
+            unsigned char pvi = x;//(z == 0 || z == 2) ? (x * 2) : (x * 2 + 1);
+            /*Serial.print("pV[");
+            Serial.print(pvi);
+            Serial.print("] = ");*/
+            if (action) 
+                positiveValue[x] |= 1 << y;
+            else 
+                positiveValue[x] &= ~ (1 << y);
+
+            /*if (z == 0 || z == 2) {
+                if (action) 
+                    positiveValue[x * 2] |= 1 << ((z == 2) ? y + 1 : y);
+                else 
+                    positiveValue[x * 2] &= ~ (1 << ((z == 2) ? y + 1 : y));
+            } else {
+                if (action) 
+                    positiveValue[x * 2 + 1] |= 1 << ((z == 3) ? y + 1 : y);
+                else 
+                    positiveValue[x * 2 + 1] &= ~ (1 << ((z == 3) ? y + 1 : y));
+            }*/
+
+            //Serial.println(positiveValue[pvi]);
+        }
+
+        void scan() {
+            //digitalWrite(negativePin, HIGH);
+            /*Serial.print("pin ");
+            Serial.print(negativePin);
+            Serial.println(" set to HIGH.\n");*/
+            //digitalWrite(((++negativePin == 13) ? (negativePin = 5) : negativePin), LOW);
+            /*if (positiveValue[negativePin - 5] == 0) {
+                digitalWrite(negativePin, HIGH);
+                return;
+            }*/
+            //digitalWrite(LATCH_PIN, LOW);
+            //shiftOut(DATAS_PIN, CLOCK_PIN, MSBFIRST, positiveValue[negativePin - 5]);
+            /*Serial.print("shifted out pv[");
+            Serial.print(negativePin - 5);
+            Serial.print("] = ");
+            Serial.println(positiveValue[negativePin - 5]);*/
+            //digitalWrite(LATCH_PIN, HIGH);
+            /*Serial.print("pin "); 
+            Serial.print(negativePin);
+            Serial.println(" set to LOW.");*/
+
+            digitalWrite(negativePin, HIGH);
+            if (++negativePin == 13) negativePin = 5;
+            digitalWrite(LATCH_PIN, LOW);
+            shiftOut(DATAS_PIN, CLOCK_PIN, MSBFIRST, positiveValue[negativePin - 5]);
+            digitalWrite(LATCH_PIN, HIGH);
+            digitalWrite(negativePin, LOW);
+
+        }
+
+    private:
+        unsigned char negativePin;
+        unsigned char positiveValue[8];
+        
+        coord calcPos(coord orig) {
+            if (orig.z == 0) {
+                return {orig.x * 2, orig.y * 2, 0};
+            } else if (orig.z == 1) {
+                return {orig.x * 2 + 1, orig.y * 2, 1};
+            } else if (orig.z == 2) {
+                return {orig.x * 2, orig.y * 2 + 1, 2};
+            } else {
+                return {orig.x * 2 + 1, orig.y * 2 + 1, 3};
+            }
+        }
+};

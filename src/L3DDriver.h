@@ -5,7 +5,7 @@
 
 #define LATCH_PIN 3
 #define CLOCK_PIN 4
-#define DATAS_PIN 2
+#define DATAS_PIN 13
 
 struct coord {
     unsigned char x, y, z;
@@ -14,7 +14,7 @@ struct coord {
 class L3DDriver {
     public:
         L3DDriver() : negativePin(5), positiveValue({0, 0, 0, 0, 0, 0, 0, 0}) {
-            for (unsigned char i = 2; i < 13; i++) {
+            for (unsigned char i = 3; i <= 13; i++) {
                 pinMode(i, OUTPUT);
                 digitalWrite(i, LOW);
             }

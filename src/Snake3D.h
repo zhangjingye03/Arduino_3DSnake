@@ -65,6 +65,7 @@ class Snake3D {
         }
 
         char move(SnakeDirection* dir) {
+            if (!dir) return -1;
             if (isOver) return 0;
             if (dir->isExclusion(lastDir)) {
                 delete dir;
@@ -73,8 +74,8 @@ class Snake3D {
             delete lastDir;
             lastDir = dir;
             
-            // 25%几率产生食物
-            if (!hasFood && random(4) == 0) {
+            // 10%几率产生食物
+            if (!hasFood && random(10) == 5) {
                 foodX = random(size);
                 foodY = random(size);
                 foodZ = random(size);
@@ -90,29 +91,40 @@ class Snake3D {
                 Serial.println(")");
             }
             
-            // 蛇头碰到食物
-            // 这儿有BUG，没有处理越界后的蛇头碰到食物
-            if (hasFood && head->x + dir->x == foodX && head->y + dir->y == foodY && head->z + dir->z == foodZ) {
-                // 把食物所在地变成蛇头
-                SnakeBlock* n = new SnakeBlock;
-                n->x = foodX;
-                n->y = foodY;
-                n->z = foodZ;
-                n->next = NULL;
-                head->next = n;
-                head = n;
-                currentLen++;
-                hasFood = 0;
-                
-                Serial.print("Food (");
-                Serial.print(n->x, DEC);
-                Serial.print(", ");
-                Serial.print(n->y, DEC);
-                Serial.print(", ");
-                Serial.print(n->z, DEC);
-                Serial.println(") has been eaten.");
-                return 1;
+            // 尝试移动蛇头
+            char hx = head->x + dir->x, hy = head->y + dir->y, hz = head->z + dir->z;
+            // 判断蛇头是否越界
+            if (hx < 0 || hx >= size || hy < 0 
+             || hy >= size || hz < 0 || hz >= size) {
+                if (ALLOW_LOOPBOUND) {
+                    // 允许越界时
+                    // 将蛇头移动到对面边界，再判断是否撞身
+                    if (hx < 0) hx = size - 1;
+                    else if (hx >= size) hx = 0;
+                    else if (hy < 0) hy = size - 1;
+                    else if (hy >= size) hy = 0;
+                    else if (hz < 0) hz = size - 1;
+                    else hz = 0;
+                } else {
+                    // 不允许越界时，game over
+                    gameOver();
+                    return 0;
+                }
             }
+            ldr->lightOn({hx, hy, hz});
+
+            // 蛇头碰到食物，填充老的方块
+            if (hasFood) {
+                if (hx == foodX && hy == foodY && hz == foodZ) {
+                    eatFood();
+                    return 1;
+                }
+            } 
+
+            if (head == tail) ldr->lightOff({head->x, head->y, head->z});
+            
+            
+
             // 移动蛇身
             SnakeBlock* t = tail;
             while (t->next) {
@@ -136,41 +148,38 @@ class Snake3D {
                 Serial.print(t->z, DEC);
                 Serial.println(")");
                 ldr->lightOn({t->x, t->y, t->z});
-                t = t->next;
-            }
-            // 尝试移动蛇头
-            if (t == tail) ldr->lightOff({t->x, t->y, t->z});
-            t->x += dir->x;
-            t->y += dir->y;
-            t->z += dir->z;
-            // 判断蛇头是否越界
-            if (t->x < 0 || t->x >= size || t->y < 0 || t->y >= size || t->z < 0 || t->z >= size) {
-                if (ALLOW_LOOPBOUND) {
-                    // 允许越界时
-                    // 将蛇头移动到对面边界，再判断是否撞身
-                    if (t->x < 0) t->x = size - 1;
-                    else if (t->x >= size) t->x = 0;
-                    else if (t->y < 0) t->y = size - 1;
-                    else if (t->y >= size) t->y = 0;
-                    else if (t->z < 0) t->z = size - 1;
-                    else t->z = 0;
-                } else {
-                    // 不允许越界时，game over
+
+                // 判断蛇头是否撞到蛇身
+                if (hx == t->x && hy == t->y && hz == t->z) {
                     gameOver();
                     return 0;
                 }
-            }
-            ldr->lightOn({t->x, t->y, t->z});
-            // 判断蛇头是否撞到蛇身
-            t = tail;
-            while (t->next) {
-                if (head->x == t->x && head->y == t->y && head->z == t->z) {
-                    gameOver();
-                    return 0;
-                }
+
                 t = t->next;
             }
+            head->x = hx; head->y = hy; head->z = hz;
             return 1;
+        }
+
+        void eatFood() {
+            // 把食物所在地变成蛇头
+            SnakeBlock* n = new SnakeBlock;
+            n->x = foodX;
+            n->y = foodY;
+            n->z = foodZ;
+            n->next = NULL;
+            head->next = n;
+            head = n;
+            currentLen++;
+            hasFood = 0;
+                   
+            Serial.print("Food (");
+            Serial.print(n->x, DEC);
+            Serial.print(", ");
+            Serial.print(n->y, DEC);
+            Serial.print(", ");
+            Serial.print(n->z, DEC);
+            Serial.println(") has been eaten.");
         }
 
         void gameOver() {

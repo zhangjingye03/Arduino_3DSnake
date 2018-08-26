@@ -1,0 +1,3 @@
+[submodule "lib\\APDS9960"]
+	path = lib\\APDS9960
+	url = https://github.com/adafruit/Adafruit_APDS9960
